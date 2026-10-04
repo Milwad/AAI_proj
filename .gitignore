@@ -1,0 +1,18 @@
+# Environment
+.venv/
+__pycache__/
+*.pyc
+
+# Datasets (144 MB + 310 MB, over GitHub's 100 MB limit, and excluded from the submission)
+data/
+
+# Binaries / model artefacts (excluded from the submission too)
+*.pt
+*.joblib
+*.npz
+
+# Editor / OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
