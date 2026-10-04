@@ -86,7 +86,7 @@ def select_threshold(scores: np.ndarray, labels: np.ndarray, method: str, **para
 
     return THRESHOLDS[method](scores, labels, **params)
 
-def save_threshold(run_dir: str | Path, method: str, params: dict, threshold: float, val_metrics: dict)->Path:
+def save_threshold(run_dir: str | Path, method: str, params: dict, threshold: float, val_metrics: dict, score_method: str)->Path:
 
     out_dir = Path(run_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
@@ -100,6 +100,7 @@ def save_threshold(run_dir: str | Path, method: str, params: dict, threshold: fl
         return v
 
     data = {
+        "score_method": score_method,
         "method": method,
         "params": params,
         "threshold": float(threshold),
@@ -112,27 +113,31 @@ def save_threshold(run_dir: str | Path, method: str, params: dict, threshold: fl
 
 def choose_threshold(conf: Config) -> tuple[float, dict]:
 
-    model, checkpoint = load_model(f"{conf.results_dir}/{conf.run_name}")
+    run_dir = Path(conf.results_dir) / conf.run_name
+    model, _ = load_model(run_dir)
     data = Data(conf=conf)
     X_s, y_s, _, _ = data.get_splits()
     _, val_loader, _ = data.make_dataloaders(X_s=X_s, y_s=y_s)
 
-    scores, labels = score_loader(model=model, loader=val_loader, method=conf.score_method)
+    scores, labels = score_loader(model=model, loader=val_loader, method=conf.score_method, seed=conf.seed)
+
     params = {}
     if conf.threshold_method == "percentile":
         params["percentile"] = conf.threshold_percentile
     elif conf.threshold_method == "recall_target":
         params["target"] = conf.recall_target
 
-    threshold = select_threshold(scores=scores, labels=labels, method=conf.threshold_method,**params)
-    val_metrics = metrics_at_threshold(scores = scores, labels=labels, threshold=threshold, prevalence=REAL_PREVALENCE)
+    threshold = select_threshold(scores=scores, labels=labels, method=conf.threshold_method, **params)
+    val_metrics = metrics_at_threshold(scores=scores, labels=labels, threshold=threshold, prevalence=REAL_PREVALENCE)
 
-    run_dir = Path(conf.results_dir)/conf.run_name
-    save_threshold(run_dir=run_dir, method=conf.threshold_method, params=params, threshold=threshold, val_metrics=val_metrics)
+    save_threshold(run_dir=run_dir, method=conf.threshold_method, params=params, threshold=threshold, val_metrics=val_metrics, score_method=conf.score_method)
 
-    print(f"\n[Saved] Threshold = {threshold:.4f} ({conf.threshold_method}) saved to {run_dir/'threshold.json'}")
+    print(f"\n[Saved] Threshold = {threshold:.4f} ({conf.threshold_method}, score '{conf.score_method}') saved to {run_dir/'threshold.json'}")
+    print(f"Validation: recall {val_metrics['recall']:.3f} | precision {val_metrics['precision']:.3f} "
+          f"(at real prevalence {val_metrics['precision_adj']:.3f}) | FPR {val_metrics['fpr']:.4f}")
 
     return threshold, val_metrics
+
 
 def precision_at_k(scores: np.ndarray, labels: np.ndarray, k: int) -> float:
 
@@ -320,6 +325,12 @@ def run_evaluation(conf: Config, split: str = "val", force: bool = False) -> dic
         threshold_info = json.load(f)
     threshold = float(threshold_info["threshold"])
 
+    if threshold_info.get("score_method", conf.score_method) != conf.score_method:
+        raise ValueError(
+            f"threshold.json was chosen for score '{threshold_info['score_method']}' but evaluating with '{conf.score_method}'. "
+            "Re-run 'threshold' with the same --score-method."
+        )
+
     model, ckpt = load_model(run_dir)
     data = Data(conf)
     X_s, y_s, _, feature_names = data.get_splits()
@@ -448,119 +459,3 @@ def run_evaluation(conf: Config, split: str = "val", force: bool = False) -> dic
     print(f"{'='*68}\n")
 
     return results
-
-# if __name__ == "__main__":
-#     from config import Config
-#     from data import Data
-#     from score import score_loader
-#     from vae import load_model
-
-#     conf = Config()
-#     model, ckpt = load_model(f"{conf.results_dir}/{conf.run_name}")
-#     data = Data(conf)
-#     X_s, y_s, _, _ = data.get_splits()
-#     _, val_loader, _ = data.make_dataloaders(X_s, y_s)
-#     s, y = score_loader(model, val_loader, conf.score_method)
-#     REAL_PREVALENCE = 492 / 284_807  # fraud rate in the full original dataset
-
-#     # [1] Percentile threshold controls the false-positive rate
-#     for q in (99.0, 99.9):
-#         t = select_threshold(s, y, "percentile", percentile=q)
-#         m = metrics_at_threshold(s, y, t)
-#         print(
-#             f"[1] p{q}: t={t:.2f} | FPR {m['fpr']:.4f} (expect ~{1 - q / 100:.4f}) | "
-#             f"recall {m['recall']:.3f} | precision {m['precision']:.3f}"
-#         )
-
-#     # [2] Confusion-matrix bookkeeping
-#     print(
-#         f"[2] TP+FP+FN+TN = {m['tp'] + m['fp'] + m['fn'] + m['tn']:,} (expect {len(y):,}) | "
-#         f"TP+FN = {m['tp'] + m['fn']} (expect {int(y.sum())})"
-#     )
-
-#     # [3] Max-F1: no nearby threshold does better
-#     t_f1 = select_threshold(s, y, "max_f1")
-#     f1 = metrics_at_threshold(s, y, t_f1)["f1"]
-#     nearby = [metrics_at_threshold(s, y, t_f1 * f)["f1"] for f in (0.9, 0.95, 1.05, 1.1)]
-#     print(
-#         f"[3] max-F1: t={t_f1:.2f}, F1 {f1:.3f} | nearby F1s {np.round(nearby, 3)} (expect all <= {f1:.3f})"
-#     )
-
-#     # [4] Recall target: reaches the target, and is the strictest threshold that does
-#     t_r = select_threshold(s, y, "recall_target", target=0.8)
-#     r = metrics_at_threshold(s, y, t_r)["recall"]
-#     next_stricter = np.min(s[s > t_r])
-#     r_next = metrics_at_threshold(s, y, next_stricter)["recall"]
-#     print(
-#         f"[4] recall target 0.8: t={t_r:.2f}, recall {r:.3f} (expect >= 0.800) | "
-#         f"next stricter threshold recall {r_next:.3f} (expect < 0.800)"
-#     )
-
-#     # [5] Monotonicity: stricter threshold -> recall and FPR never go up
-#     ts = np.percentile(s, [90, 95, 99, 99.5, 99.9])
-#     ms = [metrics_at_threshold(s, y, t) for t in ts]
-#     rec_ok = all(a["recall"] >= b["recall"] for a, b in zip(ms, ms[1:]))
-#     fpr_ok = all(a["fpr"] >= b["fpr"] for a, b in zip(ms, ms[1:]))
-#     print(f"[5] recall non-increasing: {rec_ok} | FPR non-increasing: {fpr_ok} (expect True, True)")
-
-#     # [6] Prevalence adjustment: real-world precision is lower than validation precision
-#     m = metrics_at_threshold(s, y, t_f1, prevalence=REAL_PREVALENCE)
-#     print(
-#         f"[6] at max-F1: precision val {m['precision']:.3f} | at real prevalence {m['precision_adj']:.3f} (expect lower)"
-#     )
-
-#     # [7] Operating points on validation (the table for your report)
-#     print("[7] operating points on validation:")
-#     options = [
-#         ("percentile", {"percentile": 99.0}),
-#         ("percentile", {"percentile": 99.9}),
-#         ("max_f1", {}),
-#         ("recall_target", {"target": 0.8}),
-#     ]
-#     for name, kw in options:
-#         t = select_threshold(s, y, name, **kw)
-#         m = metrics_at_threshold(s, y, t, prevalence=REAL_PREVALENCE)
-#         print(
-#             f"    {name:13s} {str(kw):22s} t={t:7.2f} | flagged {m['tp'] + m['fp']:4d} | "
-#             f"recall {m['recall']:.3f} | precision {m['precision']:.3f} (real {m['precision_adj']:.3f}) | "
-#             f"F1 {m['f1']:.3f} | FPR {m['fpr']:.4f}"
-#         )
-
-#     # [8] Save threshold
-#     choose_threshold(conf)
-
-if __name__ == "__main__":
-    
-    conf = Config()
-    run_dir = Path(conf.results_dir) / conf.run_name
-    res = run_evaluation(conf, split="test")
-    saved = json.loads((run_dir / "threshold.json").read_text())
-
-    # # for val set ONLY
-    # # [1] Threshold-free metrics reproduce the known validation values
-    # print(
-    #     f"[1] AP {res['ap']:.4f} (expect 0.7633) | ROC-AUC {res['roc_auc']:.4f} (expect 0.9514) | "
-    #     f"n {res['n']:,} / fraud {res['n_fraud']} (expect 56,887 / 236)"
-    # )
-
-    # # [2] The loaded threshold gives exactly the saved validation confusion matrix
-    # same = all(res["primary"][k] == saved["val_metrics"][k] for k in ("tp", "fp", "fn", "tn"))
-    # print(f"[2] primary confusion matrix == threshold.json: {same} (expect True)")
-
-    # # [3] Bootstrap intervals contain the point estimates and have a plausible width
-    # lo, hi = res["ap_ci"]
-    # print(f"[3] AP CI [{lo:.3f}, {hi:.3f}] contains AP: {lo <= res['ap'] <= hi} (expect about [0.71, 0.82], True)")
-
-    # # [4] precision@k at k = #flagged equals precision at the threshold
-    # model, _ = load_model(run_dir)
-    # data = Data(conf)
-    # X_s, y_s, _, _ = data.get_splits()
-    # _, val_loader, _ = data.make_dataloaders(X_s, y_s)
-    # s, y = score_loader(model, val_loader, conf.score_method)
-    # k = res["primary"]["tp"] + res["primary"]["fp"]
-    # print(
-    #     f"[4] precision@{k} {precision_at_k(s, y, k):.3f} == precision at threshold {res['primary']['precision']:.3f} (expect equal, 0.861)"
-    # )
-
-    # # [5] precision@k values
-    # print(f"[5] precision@k {res['precision_at_k']} (expect about 50: 0.96, 100: 0.92, 200: 0.865)")

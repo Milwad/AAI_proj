@@ -30,11 +30,26 @@ python src/data.py      # builds + checks the splits
 python src/train.py     # trains, saves results/<run_name>/model.pt, history.json, curves.png
 ```
 
-## Evaluation workflow
-TODO – fill in once the CLI exists (step 2).
+## Usage
+All commands are run from the project root via one CLI. `python src/main.py <command> --help` lists every option with its default.
 
-## Generation workflow
-TODO – fill in once `generate` exists (step 2).
+```bash
+# training (any Config field can be overridden)
+python src/main.py train --run-name baseline
+python src/main.py train --run-name beta2 --beta 2 --latent-dim 16 --hidden-dims 128 64
+
+# threshold + evaluation (reuses the run's own training config)
+python src/main.py threshold --run-name baseline --threshold-method max_f1
+python src/main.py evaluate  --run-name baseline --split val
+python src/main.py evaluate  --run-name baseline --split test    # test set: once only
+
+# generation: samples z ~ N(0, I), decodes, writes samples.csv, fidelity.csv, marginals.png, latent_space.png
+python src/main.py generate --run-name baseline --n-samples 5000
+
+# inference on new transactions (Class column optional)
+python src/main.py predict --run-name baseline --input new_transactions.csv
+```
+
 
 ## Results (test set, baseline run)
 | Metric | Value |

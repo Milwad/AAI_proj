@@ -15,13 +15,13 @@ class Data:
         self.conf = conf
 
     def load_and_clean(self, path: str) -> pd.DataFrame:
-        
+
         df : pd.DataFrame = pd.read_csv(path)
         df = df.drop_duplicates().reset_index(drop=True) # fix indices after dropping dupes
         return df
     
 
-    def build_features(self, df : pd.DataFrame, time_mode : str = "drop") -> tuple[pd.DataFrame, np.typing.NDArray]:
+    def build_features(self, df : pd.DataFrame, time_mode : str = "drop") -> tuple[pd.DataFrame, np.typing.NDArray | None]:
 
         # Coloumn 2 until the third last coloumn, a.k.a 2-29
         X : pd.DataFrame = df.loc[:, "V1":"V28"].copy()
@@ -31,7 +31,7 @@ class Data:
         if time_mode == "cyclic":
             hour = (df["Time"]/3600) % 24
             X["hour_sin"], X["hour_cos"] = np.sin(2*np.pi*hour/24), np.cos(2*np.pi*hour/24)
-        y : np.typing.NDArray = df["Class"].to_numpy()
+        y : np.typing.NDArray | None = df["Class"].to_numpy() if "Class" in df.columns else None
         return X, y
     
 
