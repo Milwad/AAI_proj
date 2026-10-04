@@ -1,4 +1,5 @@
 {
+    "score_method": "recon",
     "method": "max_f1",
     "params": {},
     "threshold": 94.3016357421875,
