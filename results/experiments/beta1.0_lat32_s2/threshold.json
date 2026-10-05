@@ -1,0 +1,17 @@
+{
+    "score_method": "recon",
+    "method": "max_f1",
+    "params": {},
+    "threshold": 97.5983657836914,
+    "val_metrics": {
+        "tp": 182,
+        "fp": 18,
+        "tn": 56633,
+        "fn": 54,
+        "precision": 0.91,
+        "recall": 0.7711864406779662,
+        "f1": 0.8348623853211009,
+        "fpr": 0.00031773490317911425,
+        "precision_adj": 0.8076960628890283
+    }
+}
