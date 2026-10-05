@@ -16,3 +16,12 @@ data/
 .idea/
 .DS_Store
 Thumbs.db
+
+# Large prediction outputs (152 MB each, over GitHub's limit)
+predictions*.csv
+
+# Overleaf export / submission archives
+*.zip
+
+# Paper: submitted via the ZIP only, not kept in the repo
+manuscript/
