@@ -55,6 +55,11 @@ def build_parser() -> argparse.ArgumentParser:
     predict.add_argument("--input", required=True, help="CSV with columns V1..V28 and Amount (Class optional)")
     predict.add_argument("--output", help="default: results/<run-name>/predictions.csv")
 
+    experiment = subparsers.add_parser("experiment", parents=[common], help="beta / latent-size ablation over several seeds, plus PCA and Isolation Forest baselines")
+    experiment.add_argument("--seeds", type=int, nargs="+", default=[1, 2, 3])
+    experiment.add_argument("--max-epochs", type=int, help=f"default: {defaults.max_epochs}")
+    experiment.add_argument("--skip-train", action="store_true", help="only re-score already trained runs")
+
     return parser
 
 
@@ -91,7 +96,8 @@ def main() -> None:
     if "hidden_dims" in overrides:
         overrides["hidden_dims"] = tuple(overrides["hidden_dims"])
 
-    if args.command == "train":
+    # train and experiment start from the defaults, the other commands from a trained run
+    if args.command in ("train", "experiment"):
         conf = replace(Config(), **overrides)
     else:
         run_name = overrides.get("run_name", Config.run_name)
@@ -118,6 +124,10 @@ def main() -> None:
     elif args.command == "predict":
         from predict import predict
         predict(conf, input_path=args.input, output_path=args.output)
+    elif args.command == "experiment":
+        from experiments import run_experiments
+        run_experiments(conf, seeds=args.seeds, skip_train=args.skip_train)
+        
 
 
 if __name__ == "__main__":
