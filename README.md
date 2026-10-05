@@ -56,3 +56,13 @@ python src/main.py predict --run-name baseline --input new_transactions.csv
 | PR-AUC (AP) | 0.729 [0.668, 0.794] |
 | ROC-AUC | 0.963 |
 | Recall / Precision @ max-F1 threshold | 0.76 / 0.891 |
+
+## Example outputs (`inference/`)
+Both examples use the final model (`experiments/beta1.0_lat32_s2`, beta=1, latent 32).
+
+1. **`example1_generated_transactions/`**: 5,000 synthetic transactions sampled from the prior
+   (`python src/main.py generate --run-name experiments/beta1.0_lat32_s2`), with per-feature fidelity
+   statistics, real-vs-generated histograms and the latent space plot.
+2. **`example2_fraud_detection/`**: 1,000 unseen test transactions (25 fraud) scored by
+   `python src/main.py predict ...`. Each row gets an `anomaly_score`, a `flagged` decision (max-F1 threshold)
+   and the three features with the largest reconstruction error (`top_features`).

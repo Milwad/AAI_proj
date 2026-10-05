@@ -1,0 +1,45 @@
+﻿
+==================== GENERATE | run 'experiments/beta1.0_lat32_s2' ====================
+  data_path              data/creditcard.csv
+  results_dir            results
+  time_mode              drop
+  normal_split           (0.6, 0.2, 0.2)
+  fraud_val_split        0.5
+  batch_size             256
+  latent_dim             32
+  hidden_dims            (64, 32)
+  activation             ReLU
+  split_seed             1
+  seed                   2
+  beta                   1.0
+  lr                     0.001
+  max_epochs             100
+  patience               10
+  kl_warmup_epochs       10
+  grad_clip              10.0
+  select_by              val_ap
+  run_name               experiments/beta1.0_lat32_s2
+  score_method           recon
+  score_samples          10
+  threshold_method       max_f1
+  threshold_percentile   99.9
+  recall_target          0.8
+  fp_cost                5.0
+
+
+========================= Generation Summary =========================
+Samples:            5,000 -> results\experiments\beta1.0_lat32_s2\generated\samples.csv
+Mean KS statistic:  0.101 (0 = identical marginals)
+Std ratio gen/real: 0.632 (1 = same spread)
+Correlation gap:    0.054 (mean |corr_real - corr_gen|)
+Median score (recon): generated 1.75 | real normal (val) 2.85
+Flagged as fraud:   0.00% of generated samples (threshold 97.60)
+Worst-matched features (KS):
+feature  real_mean  gen_mean  real_std  gen_std  ks_stat
+    V28      0.001     0.020     0.338    0.122    0.163
+    V22      0.000     0.047     0.723    0.501    0.145
+    V21     -0.003     0.022     0.717    0.327    0.140
+    V20     -0.002     0.002     0.768    0.362    0.127
+     V4     -0.011     0.036     1.399    0.936    0.125
+======================================================================
+

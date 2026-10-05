@@ -1,0 +1,49 @@
+﻿
+==================== PREDICT | run 'experiments/beta1.0_lat32_s2' ====================
+  data_path              data/creditcard.csv
+  results_dir            results
+  time_mode              drop
+  normal_split           (0.6, 0.2, 0.2)
+  fraud_val_split        0.5
+  batch_size             256
+  latent_dim             32
+  hidden_dims            (64, 32)
+  activation             ReLU
+  split_seed             1
+  seed                   2
+  beta                   1.0
+  lr                     0.001
+  max_epochs             100
+  patience               10
+  kl_warmup_epochs       10
+  grad_clip              10.0
+  select_by              val_ap
+  run_name               experiments/beta1.0_lat32_s2
+  score_method           recon
+  score_samples          10
+  threshold_method       max_f1
+  threshold_percentile   99.9
+  recall_target          0.8
+  fp_cost                5.0
+
+
+========================= Prediction Summary =========================
+Input:      C:\Users\ruben\AppData\Local\Temp\new_transactions.csv (1,000 rows)
+Score:      recon | threshold 97.60 (max_f1)
+Flagged:    21 (2.100%)
+Labels found -> recall 0.800 | precision 0.952 | TP=20 FP=1 FN=5 TN=974
+Most anomalous rows:
+     anomaly_score  flagged   top_features  Class
+247        2133.11        1  V17, V12, V14      1
+816        2113.33        1  V17, V10, V14      1
+551        1810.15        1  V17, V12, V16      1
+483        1309.13        1  V17, V10, V14      1
+842         680.73        1  V17, V12, V14      1
+864         553.81        1  V17, V14, V12      1
+343         366.95        1  V17, V14, V12      1
+465         298.05        1  V17, V18, V16      1
+18          274.61        1  V17, V10, V18      1
+580         272.38        1  V17, V14, V16      1
+Saved to:   inference\example2_fraud_detection\scored_transactions.csv
+======================================================================
+
