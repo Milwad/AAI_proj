@@ -50,10 +50,9 @@ python src/main.py generate --run-name baseline --n-samples 5000
 python src/main.py predict --run-name baseline --input new_transactions.csv
 ```
 
-
-## Results (test set, baseline run)
+## Results (test set, final model: beta=1, latent 32, seed 2).
 | Metric | Value |
 |---|---|
-| PR-AUC (AP) | 0.721 [0.662, 0.781] |
-| ROC-AUC | 0.949 [0.928, 0.966] |
-| Recall / Precision @ max-F1 threshold | 0.764 / 0.834 |
+| PR-AUC (AP) | 0.729 [0.668, 0.794] |
+| ROC-AUC | 0.963 |
+| Recall / Precision @ max-F1 threshold | 0.76 / 0.891 |
